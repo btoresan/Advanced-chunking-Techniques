@@ -70,7 +70,7 @@ def get_similarity_matrix(sentence_embeddings):
     
 
 # Obj: Split a text into semantic chunks based on the similarity between the embeddings of the sentences.
-def FixedWindowSplitter(text, 
+def DualSemanticChunker(text, 
                       std_multiplier=1.0, 
                       min_token_size=100, 
                       max_token_size=500, 

@@ -12,7 +12,7 @@ from sentence_transformers import SentenceTransformer
 from chromadb import Documents, Embeddings
 from tqdm import tqdm
 
-from splitter2 import FixedWindowSplitter
+from DualSemanticChunker import DualSemanticChunker
 
 class FixedWindowChunker(BaseChunker):
     def __init__(self, min, max):
@@ -23,7 +23,7 @@ class FixedWindowChunker(BaseChunker):
 
     def split_text(self, text):
         # Custom chunking logic
-        return FixedWindowSplitter(text, min_token_size=self._min, max_token_size=self._max)
+        return DualSemanticChunker(text, min_token_size=self._min, max_token_size=self._max)
 
 
 class FreeEmbeddingFunction:
