@@ -479,7 +479,7 @@ class BaseEvaluation:
         pak_mean = np.mean(PaK_scores)
         pak_std = np.std(PaK_scores)
 
-        sizes_mean = np.mean(Sizes)
+        sizes_mean = (np.mean(Sizes))/5
 
         # print("Recall scores: ", recall_scores)
         # print("Precision scores: ", precision_scores)

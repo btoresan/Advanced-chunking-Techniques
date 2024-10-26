@@ -28,6 +28,7 @@ The DSC model operates in two main stages:
 ## Repository Contents
 
 - **`chunking_evaluation/`**: Modified chromadb evaluation to support ranking-wise metrics.
+- **`results/`**: Results tables of our experiments
 - **`eval.py/`**: Code using the evaluation to compare diferent chunking methods with open models.
 - **`DualSemanticChunker/`**: Implementation of our approach to semantic chunking
 - **`requirements.txt/`**: Library depencies organizes to facilitate setup
