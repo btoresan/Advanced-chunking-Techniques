@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 from DualSemanticChunker import DualSemanticChunker
 
-class FixedWindowChunker(BaseChunker):
+class DSChunker(BaseChunker):
     def __init__(self, min, max):
         self._chunk_size = min
         self._chunk_overlap = 0
@@ -48,7 +48,7 @@ chunkers = [
     RecursiveTokenChunker(chunk_size=200, chunk_overlap=0, length_function=openai_token_count),
     KamradtModifiedChunker(avg_chunk_size = 200, embedding_function = ef),
     ClusterSemanticChunker(embedding_function=ef, max_chunk_size=200, length_function=openai_token_count),
-    FixedWindowChunker(min=1, max=200),
+    DSChunker(min=1, max=200),
 
 ]
 
