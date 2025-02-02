@@ -55,18 +55,21 @@ def dynamic_threshold(similarity_matrix, std_multiplier=0.5, distance=10):
     
 # Obj: Get the similarity scores between the embeddings of the sentences.
 # In: sentence_embeddings: List of np.array
+
 def get_similarity_matrix(sentence_embeddings):
+    # Convert to a PyTorch tensor (if not already)
+    matrix = torch.tensor(sentence_embeddings, dtype=torch.float32)
+    
     if torch.cuda.is_available():
-        matrix = torch.tensor(sentence_embeddings).float().cuda() 
-    else:
-        matrix = torch.tensor(sentence_embeddings).float()
-    result = torch.matmul(matrix, matrix.t())
+        matrix = matrix.cuda() 
 
-    magnitudes = np.linalg.norm(sentence_embeddings, axis=1)
-    result= result/ np.outer(magnitudes, magnitudes)
+    # Compute cosine similarity using PyTorch
+    result = torch.matmul(matrix, matrix.T)  # Compute dot product
 
-    # Transfer result back to CPU and print it
-    return result.cpu().numpy()
+    magnitudes = torch.norm(matrix, dim=1)  # Compute L2 norm
+    result = result / (magnitudes[:, None] * magnitudes[None, :])  # Normalize
+
+    return result.cpu().numpy()  # Convert back to NumPy for output
     
 
 # Obj: Split a text into semantic chunks based on the similarity between the embeddings of the sentences.
