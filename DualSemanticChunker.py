@@ -1,6 +1,6 @@
 import spacy
 import numpy as np
-from transformers import pipeline
+from transformers import pipeline, AutoModel, AutoTokenizer 
 import datasets
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
@@ -8,10 +8,18 @@ import torch
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 
+from sentence_transformers import SentenceTransformer
+
+# Mean Pooling for Embeddings
+def mean_pooling(token_embeddings, mask):
+    token_embeddings = token_embeddings.masked_fill(~mask[..., None].bool(), 0.0)
+    sentence_embeddings = token_embeddings.sum(dim=1) / mask.sum(dim=1)[..., None]
+    # sentence_embeddings = np.mean(token_embeddings,axis=0)
+    return sentence_embeddings
+
 # Obj: Get embeddings for a list of sentences given a pipeline (check if sentence is too big)
 # In: sentences: List of strings, embedding_pipeline: Pipeline
-def get_sentence_embeddings(sentences, embedding_pipeline, max_length=100):
-    tokenizer = embedding_pipeline.tokenizer
+def get_sentence_embeddings(sentences, tokenizer, model_name, batch_size=256, max_length=100):
 
     #make sure the sentences have less tokens than max length
     for i, sentence in enumerate(sentences):
@@ -25,22 +33,19 @@ def get_sentence_embeddings(sentences, embedding_pipeline, max_length=100):
                 i+=1
                 sentences.insert(i, part)
 
-    #create a dataset to process the sentences in parallel
-    dataset = datasets.Dataset.from_dict({"text":sentences})
+    #get embeddings using sentence transformers
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")    
+    model = SentenceTransformer(model_name)
 
-    features = embedding_pipeline(dataset["text"], batch_size=16)
-    embeddings = []
-    for feature in features:
-        token_embeddings = feature[0]
-        sentence_embedding = np.mean(token_embeddings, axis=0)
-        embeddings.append(sentence_embedding)
+    embeddings = model.encode(sentences, batch_size=batch_size, convert_to_numpy=True, device=device)
 
     return embeddings 
 
 # Obj: Calculate a dynamic threshold for semantic chunking using the similarity matrix.
 #      The threshold is calculated as the mean minus a multiplier times the standard deviation.
 # In: similarity_matrix: List of float, std_multiplier: float
-def dynamic_threshold(similarity_matrix, std_multiplier=0.5, distance=10):
+def dynamic_threshold(similarity_matrix, std_multiplier=1.0, distance=10):
     # Filter the similarity scores to only consider the target ones
     n = similarity_matrix.shape[0]
     rows, cols = np.indices((n, n))
@@ -51,25 +56,25 @@ def dynamic_threshold(similarity_matrix, std_multiplier=0.5, distance=10):
     mean = np.mean(target_scores)
     std = np.std(target_scores)
     
-    return mean - std_multiplier * std
+    return mean + std_multiplier * std
     
 # Obj: Get the similarity scores between the embeddings of the sentences.
 # In: sentence_embeddings: List of np.array
 
 def get_similarity_matrix(sentence_embeddings):
-    # Convert to a PyTorch tensor (if not already)
-    matrix = torch.tensor(sentence_embeddings, dtype=torch.float32)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    if torch.cuda.is_available():
-        matrix = matrix.cuda() 
-
-    # Compute cosine similarity using PyTorch
-    result = torch.matmul(matrix, matrix.T)  # Compute dot product
-
-    magnitudes = torch.norm(matrix, dim=1)  # Compute L2 norm
-    result = result / (magnitudes[:, None] * magnitudes[None, :])  # Normalize
-
-    return result.cpu().numpy()  # Convert back to NumPy for output
+    # Convert numpy array to PyTorch tensor
+    matrix = torch.tensor(sentence_embeddings, dtype=torch.float32).to(device)  # Shape: (N, D)
+    
+    # Compute similarity matrix
+    similarity_matrix = matrix @ matrix.T  # Shape: (N, N)
+    
+    # Normalize to obtain cosine similarity
+    norms = torch.norm(matrix, dim=1, keepdim=True)  # Shape: (N, 1)
+    normalized_similarity_matrix = similarity_matrix / (norms @ norms.T)
+    
+    return normalized_similarity_matrix.cpu().numpy()
     
 
 # Obj: Split a text into semantic chunks based on the similarity between the embeddings of the sentences.
@@ -78,7 +83,7 @@ def DualSemanticChunker(text,
                       min_token_size=100, 
                       max_token_size=500, 
                       SpacyModel="en_core_web_sm",
-                      TransformerModel="bert-base-uncased",
+                      TransformerModel="sentence-transformers/stsb-mpnet-base-v2",
                       static_threshold=False,
                       threshold_distance = 10,
                       threshold=0.5,
@@ -92,10 +97,10 @@ def DualSemanticChunker(text,
     
     #Loads the LLM models 
     nlp = spacy.load(SpacyModel)
-    embedding_pipeline = pipeline("feature-extraction", model=TransformerModel, device=device)
-    
+    tokenizer = AutoTokenizer.from_pretrained(TransformerModel)
+
     #Divides the text into sentences
-    nlp.max_length = 100000 #Adjust to process large texts
+    nlp.max_length = 1600000 #Adjust to process large texts (1gb ram per 100,000)
     doc = nlp(text)
     sentences = [sent.text for sent in doc.sents]
     
@@ -103,9 +108,7 @@ def DualSemanticChunker(text,
     sentence_tokens = [nlp(sent) for sent in sentences]
     sentence_token_counts = [len(tokens) for tokens in sentence_tokens]
 
-    embeddings = get_sentence_embeddings(sentences.copy(), embedding_pipeline)
-    embeddings = [np.array(embedding) for embedding in embeddings]
-    embeddings = np.array(embeddings)
+    embeddings = get_sentence_embeddings(sentences.copy(),tokenizer=tokenizer, model_name=TransformerModel)
     
     #Calculates the similarity matrix and the threshold
     similarity_matrix = get_similarity_matrix(embeddings)
