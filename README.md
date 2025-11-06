@@ -36,8 +36,6 @@ The DSC model operates in two main stages:
 
 ## 📖 Cite this work
 
-If you use this repository, please cite:
-
 ```bibtex
 @inproceedings{toresan2025advanced,
   title={Advanced Chunking Techniques: a Novel Approach for Semantic Splitters},
