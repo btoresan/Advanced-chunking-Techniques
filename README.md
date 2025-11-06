@@ -1,5 +1,6 @@
 # Dual Semantic Chunker (DSC)
 *An advanced, semantically-driven chunking tool for enhanced Information Retrieval (IR) performance.*
+*Paper: https://sol.sbc.org.br/index.php/sbbd/article/view/37257*
 
 ---
 
@@ -32,3 +33,17 @@ The DSC model operates in two main stages:
 - **`eval.py/`**: Code using the evaluation to compare diferent chunking methods with open models.
 - **`DualSemanticChunker/`**: Implementation of our approach to semantic chunking
 - **`requirements.txt/`**: Library depencies organizes to facilitate setup
+
+## 📖 Cite this work
+
+If you use this repository, please cite:
+
+```bibtex
+@inproceedings{toresan2025advanced,
+  title={Advanced Chunking Techniques: a Novel Approach for Semantic Splitters},
+  author={Toresan, Bernardo Ramos and Moreira, Viviane Pereira and Paula, Felipe Soares Fagundes and Bencke, Luciana Regina},
+  booktitle={Simp{\'o}sio Brasileiro de Banco de Dados (SBBD)},
+  pages={455--465},
+  year={2025},
+  organization={SBC}
+}
